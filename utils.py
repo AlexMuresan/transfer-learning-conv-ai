@@ -2,6 +2,7 @@
 # All rights reserved. This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 from datetime import datetime
+import requests
 import json
 import logging
 import os
@@ -11,12 +12,29 @@ import socket
 
 import torch
 
-from transformers import cached_path
-
 PERSONACHAT_URL = "https://s3.amazonaws.com/datasets.huggingface.co/personachat/personachat_self_original.json"
 HF_FINETUNED_MODEL = "https://s3.amazonaws.com/models.huggingface.co/transfer-learning-chatbot/gpt_personachat_cache.tar.gz"
 
 logger = logging.getLogger(__file__)
+
+
+def cached_path(url, cache_dir=None):
+    if not cache_dir:
+        cache_dir = './cache'
+    os.makedirs(cache_dir, exist_ok=True)
+    file_path = os.path.join(cache_dir, "personachat_self_original.json")
+
+    if not os.path.exists(file_path):
+        response = requests.get(url)
+        response.raise_for_status()
+        with open(file_path, "wb") as f:
+            f.write(response.content)
+    else:
+        print("File already downloaded and cached")
+
+    print(f"File is located at: {file_path}")
+    return file_path
+
 
 def download_pretrained_model():
     """ Download and extract finetuned model from S3 """

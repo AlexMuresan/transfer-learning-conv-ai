@@ -15,7 +15,7 @@ from ignite.engine import Engine, Events
 from ignite.handlers import ModelCheckpoint, global_step_from_engine
 from ignite.metrics import Accuracy, Loss, MetricsLambda, RunningAverage
 from ignite.contrib.handlers import ProgressBar, PiecewiseLinear
-from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler
+from ignite.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler
 from transformers import (AdamW, OpenAIGPTDoubleHeadsModel, OpenAIGPTTokenizer,
                                   GPT2DoubleHeadsModel, GPT2Tokenizer, WEIGHTS_NAME, CONFIG_NAME)
 
@@ -175,10 +175,15 @@ def train():
         model.train()
         batch = tuple(input_tensor.to(args.device) for input_tensor in batch)
         input_ids, mc_token_ids, lm_labels, mc_labels, token_type_ids = batch
-        (lm_loss), (mc_loss), *_ = model(
-            input_ids, token_type_ids=token_type_ids, mc_token_ids=mc_token_ids,
-            mc_labels=mc_labels, lm_labels=lm_labels
+        outputs = model(
+            input_ids=input_ids,
+            mc_token_ids=mc_token_ids,
+            labels=lm_labels,
+            mc_labels=mc_labels,
+            token_type_ids=token_type_ids
         )
+
+        lm_loss, mc_loss = outputs.loss, outputs.mc_loss
         loss = (lm_loss * args.lm_coef + mc_loss * args.mc_coef) / args.gradient_accumulation_steps
         if args.fp16:
             with amp.scale_loss(loss, optimizer) as scaled_loss:
